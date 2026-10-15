@@ -1,0 +1,30 @@
+# Multi model example with explicit encoder/decoder pairs.
+# Run: bb run -c configs/example_multi.yaml
+
+task: copy
+loss: cross_entropy
+sequence_length: [64, 128, 256]
+vocabulary_size: [64, 128, 256]
+input_noise: [0.0, 0.1]
+corruption_mode: replace
+batch_size: 128
+steps: 5000
+eval_every: 1000
+seed: 42
+
+models:
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+d_model: 128
+bottleneck_dim: 32

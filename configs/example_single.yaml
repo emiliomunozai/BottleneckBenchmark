@@ -1,0 +1,23 @@
+# Single model example.
+# Run: bb run -c configs/example_single.yaml
+
+task: copy
+loss: cross_entropy
+
+encoder: bi_lstm
+decoder: lstm
+
+sequence_length: 32
+vocabulary_size: 64
+input_noise: 0.0
+corruption_mode: replace
+
+d_model: 128
+bottleneck_dim: 32
+n_layers: 2
+n_heads: 4
+
+batch_size: 64
+steps: 5000
+eval_every: 500
+seed: 42

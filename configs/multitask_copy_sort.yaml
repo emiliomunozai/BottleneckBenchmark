@@ -1,0 +1,26 @@
+# Multi-task compression: one encoder, two decoders (copy + sort) through one bottleneck z.
+#
+# Question: what is d_b^min for joint success on both tasks simultaneously?
+# Baseline: copy d_b^min=20, sort d_b^min=10 at L=16. Does joint require 20, 30, or more?
+#
+# Fixed: L=16, V=8, s=0, eta=0.
+# Grid spans below and above both known thresholds.
+#
+# Total: 3 encoders x 8 d_b x 3 seeds = 72 runs (~1.1h)
+#
+# Run: uv run python scripts/run_multitask.py -c configs/multitask_copy_sort.yaml
+
+sequence_length: 16
+vocabulary_size: 8
+input_noise: 0.0
+structural_regularity: 0.0
+d_model: 128
+n_layers: 2
+batch_size: 128
+steps: 20000
+eval_every: 500
+no_hope_after_evals: 100
+
+encoder: [bi_lstm, transformer, bi_ssm]
+bottleneck_dim: [5, 10, 15, 20, 25, 30, 40, 60]
+seed: [42, 123, 456]

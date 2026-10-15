@@ -1,0 +1,56 @@
+# Joint stress sweep: L, V, s simultaneously (2×2×2 factorial).
+# Low = baseline values; High = elevated values.
+# Per-factor sweeps cover single-factor effects; this sweep tests whether
+# increasing factors together breaks proportionality non-additively.
+#
+# d_min = ceil(L * (1-s) * log2(V) / 32):
+#   (L=16, V=8,  s=0.0) → d_min=2
+#   (L=16, V=8,  s=0.5) → d_min=1
+#   (L=16, V=32, s=0.0) → d_min=3
+#   (L=16, V=32, s=0.5) → d_min=2
+#   (L=64, V=8,  s=0.0) → d_min=6
+#   (L=64, V=8,  s=0.5) → d_min=3
+#   (L=64, V=32, s=0.0) → d_min=10
+#   (L=64, V=32, s=0.5) → d_min=5
+#
+# Note: at (L=64, V=32, s=0), r=20 and r=40 hit the d_model=128 cap.
+# The informative signal lives at r=5 and r=10 for high-difficulty conditions.
+#
+# η is not included in this sweep — noise does not change d_min and is
+# handled as an independent factor in sweep_eta.
+#
+# Total runs: 8 conditions × 4 r × 3 architectures × 3 seeds = 288
+# Run: uv run bb run -c configs/copy_sweep_joint.yaml --no-save-model
+
+task: copy
+loss: cross_entropy
+sequence_length: [16, 64]
+vocabulary_size: [8, 32]
+structural_regularity: [0.0, 0.5]
+input_noise: 0.0
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [42, 123, 456]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+models:
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+d_model: 128
+capacity_ratio: [5, 10, 20, 40]

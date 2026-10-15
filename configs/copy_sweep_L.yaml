@@ -1,0 +1,52 @@
+# Proportional-bottleneck sweep: sequence length (L).
+# Fixed: V=8, s=0, η=0. Swept: L ∈ {8, 16, 32, 64, 96}.
+# d_b = ceil(r * d_min(L, V=8, s=0)) for r ∈ {5, 10, 20, 40}.
+#
+# d_min = ceil(L * log2(8) / 32) = ceil(3L/32)
+#   L=8  → d_min=1  | r=5→5,   r=10→10,  r=20→20,  r=40→40
+#   L=16 → d_min=2  | r=5→10,  r=10→20,  r=20→40,  r=40→80
+#   L=32 → d_min=3  | r=5→15,  r=10→30,  r=20→60,  r=40→120
+#   L=64 → d_min=6  | r=5→30,  r=10→60,  r=20→120, r=40→240*
+#   L=96 → d_min=9  | r=5→45,  r=10→90,  r=20→180* r=40→360*
+#
+# (*) d_b would exceed d_model=128; clip to 128 for those conditions.
+# The key signal is at r=5 and r=10 where d_b < 128 for all L.
+#
+# Key question: at fixed r, does accuracy hold as L increases?
+# If EG ≈ const across L → proportional bottleneck preserves performance.
+#
+# Total runs: 5 L × 4 r × 3 architectures × 3 seeds = 180
+# Run: uv run bb run -c configs/copy_sweep_L.yaml --no-save-model
+
+task: copy
+loss: cross_entropy
+sequence_length: [8, 16, 32, 64, 96]
+vocabulary_size: 8
+input_noise: 0.0
+structural_regularity: 0.0
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [42, 123, 456]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+models:
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+d_model: 128
+capacity_ratio: [5, 10, 20, 40]

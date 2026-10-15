@@ -1,0 +1,52 @@
+# Forgetting map: which token positions fail first as d_b tightens?
+#
+# Fixed: L=16, V=8, s=0, eta=0. Swept: d_b across a dense grid spanning
+# below and above d_b^min for all three architectures.
+#
+# Known d_b^min at this condition (from paper Table 1):
+#   bi_lstm:     d_b^min = 20  (fails at d_b <= 15, passes at d_b >= 20)
+#   transformer: d_b^min = 20  (same)
+#   bi_ssm:      d_b^min = 40  (fails at d_b <= 30, passes at d_b >= 40)
+#
+# Dense grid covers: below transition, at transition, above transition.
+# Checkpoints ARE saved (omit --no-save-model) -- required for per-position analysis.
+#
+# Total: 3 encoders x 9 d_b x 3 seeds = 81 runs (~1.2h)
+#
+# After running, use scripts/forgetting_map.py to load each checkpoint and
+# compute per-position accuracy vectors.
+#
+# Run: uv run bb run -c configs/forgetting_map.yaml -o data/results/expresults3.csv
+
+task: copy
+loss: cross_entropy
+sequence_length: 16
+vocabulary_size: 8
+input_noise: 0.0
+structural_regularity: 0.0
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [42, 123, 456]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+d_model: 128
+bottleneck_dim: [5, 10, 15, 20, 25, 30, 40, 60, 80]
+
+models:
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2

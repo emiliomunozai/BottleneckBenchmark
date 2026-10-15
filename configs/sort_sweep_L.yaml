@@ -1,0 +1,50 @@
+# Sort task sweep: sequence length (L).
+# Fixed: V=8, s=0, η=0. Swept: L ∈ {8, 16, 32, 64, 96}.
+#
+# Pilot result (L=16 baseline): BiLSTM EG=5, Transformer EG=5, BiSSM EG=5.
+# All architectures solve sort at r=5 (accuracy=1.0).
+# Sort is easier than copy because the output is a multiset:
+# H(multiset) << H(ordered sequence), so d_b at r=5 suffices.
+#
+# Key question: does EG remain 5 as L grows, or does length impose overhead
+# even for the easier sort task? If EG rises, it suggests that d_min(τ)
+# underestimates the true capacity needed for the sort multiset at long L.
+#
+# L=16 runs (pilot) will be skipped by the CLI dedup.
+# New runs: 4 L × 4r × 3arch × 3seeds = 144
+# Total in config: 5 L × 4r × 3arch × 3seeds = 180
+#
+# Run: uv run bb run -c configs/sort_sweep_L.yaml --no-save-model
+
+task: sorting
+loss: cross_entropy
+sequence_length: [8, 16, 32, 64, 96]
+vocabulary_size: 8
+input_noise: 0.0
+structural_regularity: 0.0
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [42, 123, 456]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+models:
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+d_model: 128
+capacity_ratio: [5, 10, 20, 40]

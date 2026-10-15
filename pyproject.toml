@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bb"
+version = "0.1.0"
+description = "Bottleneck Benchmark (BB): sequence models under a fixed latent bottleneck (package bb, CLI bb)."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.12"
+
+dependencies = [
+    "PyYAML>=6.0",
+    "tqdm==4.67.1",
+    "spacy==3.8.11",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+]
+
+[dependency-groups]
+dev = [
+    "build>=1.0",
+    "pytest>=7.0",
+    "ruff>=0.4",
+    "ipykernel",
+    "openpyxl>=3.1.5",
+]
+cpu = [
+    "torch>=2.0",
+]
+gpu = [
+    "torch>=2.0",
+]
+graphs = [
+    "scikit-learn>=1.8.0",
+]
+
+[project.scripts]
+bb = "bb.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bb"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu128", group = "gpu" },
+  { index = "pytorch-cpu", group = "cpu" },
+]
+
+[tool.uv]
+conflicts = [
+  [{ group = "cpu" }, { group = "gpu" }],
+]

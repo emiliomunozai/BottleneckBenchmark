@@ -1,0 +1,51 @@
+# Proportional-bottleneck sweep: vocabulary size (V).
+# Fixed: L=16, s=0, η=0. Swept: V ∈ {4, 8, 16, 32, 64}.
+# d_b = ceil(r * d_min(L=16, V, s=0)) for r ∈ {5, 10, 20, 40}.
+#
+# d_min = ceil(16 * log2(V) / 32) = ceil(log2(V)/2)
+#   V=4  → d_min=1  | r=5→5,  r=10→10, r=20→20, r=40→40
+#   V=8  → d_min=2  | r=5→10, r=10→20, r=20→40, r=40→80
+#   V=16 → d_min=2  | r=5→10, r=10→20, r=20→40, r=40→80
+#   V=32 → d_min=3  | r=5→15, r=10→30, r=20→60, r=40→120
+#   V=64 → d_min=3  | r=5→15, r=10→30, r=20→60, r=40→120
+#
+# All d_b values stay below d_model=128 for this L=16 baseline.
+#
+# Key question: at fixed r, does accuracy hold as V increases?
+# If EG ≈ const across V → proportional bottleneck preserves performance.
+#
+# Total runs: 5 V × 4 r × 3 architectures × 3 seeds = 180
+# Run: uv run bb run -c configs/copy_sweep_V.yaml --no-save-model
+
+task: copy
+loss: cross_entropy
+sequence_length: 16
+vocabulary_size: [4, 8, 16, 32, 64]
+input_noise: 0.0
+structural_regularity: 0.0
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [42, 123, 456]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+models:
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+d_model: 128
+capacity_ratio: [5, 10, 20, 40]

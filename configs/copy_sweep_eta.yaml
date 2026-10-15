@@ -1,0 +1,48 @@
+# Proportional-bottleneck sweep: input noise (η).
+# Fixed: L=16, V=8, s=0. Swept: η ∈ {0, 0.1, 0.2, 0.3}.
+# d_b = ceil(r * d_min(L=16, V=8, s=0)) for r ∈ {5, 10, 20, 40}.
+#
+# d_min = 2 for all η (noise does not change task entropy — the target is
+# always the clean sequence, so H(τ) is fixed regardless of η).
+#   r=5→10, r=10→20, r=20→40, r=40→80  (same d_b at every η level)
+#
+# Key question: does accuracy degrade as η increases even though d_b is
+# held fixed? If so, noise forces architectures to use more representational
+# budget to denoise — it inflates the effective EG without changing d_min.
+# The architecture that degrades least is the most noise-robust compressor.
+#
+# Total runs: 4 η × 4 r × 3 architectures × 3 seeds = 144
+# Run: uv run bb run -c configs/copy_sweep_eta.yaml --no-save-model
+
+task: copy
+loss: cross_entropy
+sequence_length: 16
+vocabulary_size: 8
+input_noise: [0.0, 0.1, 0.2, 0.3]
+structural_regularity: 0.0
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [42, 123, 456]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+models:
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+d_model: 128
+capacity_ratio: [5, 10, 20, 40]

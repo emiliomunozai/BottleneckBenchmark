@@ -1,0 +1,55 @@
+# Interaction sweep: input noise (η) × sequence length (L).
+# Fixed: V=8, s=0. Swept: η ∈ {0, 0.1, 0.2, 0.3}, L ∈ {16, 32, 64}.
+# d_b = ceil(r * d_min(L, V=8, s=0)) for r ∈ {5, 10, 20, 40}.
+#
+# d_min = ceil(3L/32):
+#   L=16 → d_min=2 | r=5→10,  r=10→20,  r=20→40,  r=40→80
+#   L=32 → d_min=3 | r=5→15,  r=10→30,  r=20→60,  r=40→120
+#   L=64 → d_min=6 | r=5→30,  r=10→60,  r=20→120, r=40→240* (capped at 128)
+#
+# Already completed (will be skipped):
+#   L=16 × all η  (sweep_eta)
+#   L=32, η=0     (sweep_L)
+#   L=64, η=0     (sweep_L)
+#
+# New runs: L∈{32,64} × η∈{0.1,0.2,0.3} = 6 conditions × 4r × 3arch × 3seeds = 216
+#
+# Scientific question: do η and L failures compound? If the Transformer collapses
+# at η=0.1 (L=16) and at L=32 (η=0), does it fail earlier or more severely when
+# both are elevated? If failures are additive, EG shifts are independent; if they
+# compound, the interaction reveals a deeper architectural fragility.
+#
+# Run: uv run bb run -c configs/copy_sweep_eta_L.yaml --no-save-model
+
+task: copy
+loss: cross_entropy
+sequence_length: [16, 32, 64]
+vocabulary_size: 8
+input_noise: [0.0, 0.1, 0.2, 0.3]
+structural_regularity: 0.0
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [42, 123, 456]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+models:
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+d_model: 128
+capacity_ratio: [5, 10, 20, 40]

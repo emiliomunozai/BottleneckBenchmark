@@ -1,0 +1,85 @@
+# Decoder modulation: does decoder inductive bias independently affect d_b^min?
+# Full 3x3 encoder x decoder pairing on the copy L sweep.
+# Fixed: V=8, s=0, eta=0. Swept: L in {8,16,32,64,96}, r in {5,10,20,40}.
+#
+# d_min = ceil(3L/32):
+#   L=8  -> d_min=1 | r=5->5,   r=10->10,  r=20->20,  r=40->40
+#   L=16 -> d_min=2 | r=5->10,  r=10->20,  r=20->40,  r=40->80
+#   L=32 -> d_min=3 | r=5->15,  r=10->30,  r=20->60,  r=40->120
+#   L=64 -> d_min=6 | r=5->30,  r=10->60,  r=20->120, r=40->128 (capped)
+#   L=96 -> d_min=9 | r=5->45,  r=10->90,  r=20->128 (capped), r=40->128 (capped)
+#
+# Total: 3 pairings x 3 L x 4 r x 3 seeds = 108 runs (~1.7h @ 55s/run)
+# Starting point: fix bi_lstm encoder, key L levels only.
+# If results are interesting, extend to all 9 pairings and all 5 L values.
+#
+# Scientific question: does decoder inductive bias independently modulate d_b^min?
+# If d_b^min for bi_lstm->transformer matches bi_lstm->lstm at every L, the
+# bottleneck is encoder-side. If it diverges, the decoder contributes independently.
+#
+# Run: uv run bb run -c configs/decoder_sweep_L.yaml --no-save-model -o data/results/2ndexperiment.csv
+
+task: copy
+loss: cross_entropy
+sequence_length: [16, 32, 64]
+vocabulary_size: 8
+input_noise: 0.0
+structural_regularity: 0.0
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [42, 123, 456]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+d_model: 128
+capacity_ratio: [5, 10, 20, 40]
+
+models:
+  # bi_lstm encoder x all decoders
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: bi_lstm
+    decoder: ssm
+    n_layers: 2
+
+  - encoder: bi_lstm
+    decoder: transformer
+    n_layers: 2
+    n_heads: 4
+
+  # transformer encoder x all decoders
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: transformer
+    decoder: ssm
+    n_layers: 2
+    n_heads: 4
+
+  - encoder: transformer
+    decoder: transformer
+    n_layers: 2
+    n_heads: 4
+
+  # bi_ssm encoder x all decoders
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+  - encoder: bi_ssm
+    decoder: ssm
+    n_layers: 2
+
+  - encoder: bi_ssm
+    decoder: transformer
+    n_layers: 2
+    n_heads: 4
+
