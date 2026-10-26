@@ -413,13 +413,53 @@ def _worker_run_configs(args_tuple):
         _write_result(cfg, row, history, ckpt_path, out_path)
 
 
+SUCCESS_THRESHOLD = 0.8  # mean noisy-validation accuracy defining d_b^min (paper protocol)
+
+
+def _grid_group(cfg: dict) -> tuple:
+    """Configs that differ only in capacity_ratio/seed share one d_b grid."""
+    return _config_signature({**cfg, "capacity_ratio": None, "seed": None, "bottleneck_dim": None})
+
+
+def _ceiling_failures(configs: list[dict], out_path: Path) -> list[tuple[dict, list[dict], list]]:
+    """(base config, logged grid runs, seeds) for each grid group of `configs` whose seed-mean
+    accuracy misses the threshold at every tested d_b, including earlier extensions, while the
+    largest tested d_b is still below d_model (i.e. the grid may end too early)."""
+    rows, _ = load_existing_rows(out_path, _config_signature)
+    base, seeds = {}, {}
+    for cfg in configs:
+        if cfg.get("capacity_ratio") is not None:
+            key = _grid_group(cfg)
+            base.setdefault(key, cfg)
+            seeds.setdefault(key, set()).add(cfg.get("seed"))
+    groups: dict[tuple, list] = {}
+    for row in rows:
+        key = _grid_group(row)
+        if key in base and _norm_sig_val(row.get("capacity_ratio")) is not None:
+            groups.setdefault(key, []).append(row)
+    failing = []
+    for key, grp in groups.items():
+        accs: dict[int, list[float]] = {}
+        for row in grp:
+            accs.setdefault(int(row["bottleneck_dim"]), []).append(float(row["final_val_noisy_acc"]))
+        if all(sum(a) / len(a) < SUCCESS_THRESHOLD for a in accs.values()) \
+                and max(accs) < int(base[key]["d_model"]):
+            failing.append((base[key], grp, sorted(seeds[key], key=str)))
+    return failing
+
+
+def _next_grid_point(base: dict, grp: list[dict], seeds: list) -> list[dict]:
+    """Double the largest capacity_ratio (continuing 5, 10, 20, 40 -> 80 -> 160), for every seed."""
+    top_r = max(float(r["capacity_ratio"]) for r in grp)
+    return [{**base, "capacity_ratio": top_r * 2, "seed": s} for s in seeds]
+
+
 def cmd_run(args):
     configs = []
     for path in args.config:
         configs.extend(_expand_sweep(_load_config(path)))
 
     out_path = Path(args.output) if args.output else default_results_path()
-    workers = args.workers
 
     existing_rows, explored = [], set()
     if not args.overwrite and out_path.exists():
@@ -432,14 +472,34 @@ def cmd_run(args):
         print(f"Skipping {skipped} already-explored configuration(s)")
     if not to_run:
         print("No new configurations to run.")
-        return
 
+    overwrite = args.overwrite  # reset the CSV on the first round only, never between extensions
+    while True:
+        if to_run:
+            _execute(to_run, args, out_path, overwrite)
+            overwrite = False
+        failing = _ceiling_failures(configs, out_path)
+        if not failing:
+            break
+        if not args.extend_grid:
+            for c, grp, _ in failing:
+                top = max(int(r["bottleneck_dim"]) for r in grp)
+                print(f"warning: {c['encoder']}/{c['decoder']} {c['task']} L={c['sequence_length']} "
+                      f"V={c['vocabulary_size']} s={c['structural_regularity']} eta={c['input_noise']}: "
+                      f"no tested d_b reached {SUCCESS_THRESHOLD} (largest {top} < d_model); "
+                      f"d_b^min may lie above the grid. Rerun with --extend-grid or use a fixed grid.")
+            break
+        to_run = [c for base, grp, seeds in failing for c in _next_grid_point(base, grp, seeds)]
+
+
+def _execute(to_run: list[dict], args, out_path: Path, overwrite: bool):
+    workers = args.workers
     detail_path = runs_detail_path(out_path)
     # runs_detail.jsonl is a permanent append-only log — never cleared.
     base_id = get_next_run_id(out_path)
 
     # With --overwrite, reset the summary CSV before any workers start writing.
-    if args.overwrite:
+    if overwrite:
         overwrite_results([], out_path)
 
     print(f"Running {len(to_run)} configuration(s) with {workers} worker(s)")
@@ -522,6 +582,9 @@ def main():
     run_p.add_argument("--overwrite", action="store_true", help="Replace existing results file")
     run_p.add_argument("--no-save-model", action="store_true", help="Skip checkpoint writing")
     run_p.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
+    run_p.add_argument("--extend-grid", action="store_true",
+                       help="When a config fails at its largest grid d_b (< d_model), keep doubling "
+                            "capacity_ratio until it succeeds or reaches d_model.")
     run_p.add_argument("--workers", type=int, default=1, metavar="N",
                        help="Number of parallel training processes (default 1). "
                             "Each worker uses the same GPU; configs are split round-robin.")
