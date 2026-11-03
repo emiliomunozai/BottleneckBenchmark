@@ -252,4 +252,15 @@ BB exposes four independently controllable difficulty factors:
 | **Noise** | `input_noise` | Corrupted tokens → encoder must denoise before compressing |
 | **Structural regularity** | `structural_regularity` | Higher value → more token repetition → lower effective entropy, more compressible |
 
-The bottleneck dimension `bottleneck_dim` is the primary architectural variable. By fixing it across architectures the benchmark equalizes the information budget, so accuracy differences reflect compression efficiency rather than raw model width.
+The bottleneck dimension `bottleneck_dim` is the primary architectural variable. By fixing it across architectures the benchmark equalizes the information budget, so accuracy differences reflect the latent width each architecture requires rather than raw model width.
+
+## Citation
+
+```bibtex
+@inproceedings{munoz2026bottleneck,
+  title     = {Bottleneck Benchmark: Sequence Compression Under Controlled Difficulty and Fixed Latent Size},
+  author    = {Munoz, Emilio and Mohr, Felix},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS), Evaluations and Datasets Track},
+  year      = {2026}
+}
+```
