@@ -8,7 +8,7 @@
 #
 # Total: 3 encoders x 8 d_b x 3 seeds = 72 runs (~1.1h)
 #
-# Run: uv run python scripts/run_multitask.py -c configs/multitask_copy_sort.yaml
+# Run: uv run python scripts/paper/run_multitask.py -c configs/paper/multitask_copy_sort.yaml -o data/results/multitask.csv
 
 sequence_length: 16
 vocabulary_size: 8

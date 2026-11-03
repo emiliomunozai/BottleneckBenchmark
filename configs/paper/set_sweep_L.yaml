@@ -10,7 +10,7 @@
 # New runs: 4 L × 5r × 3arch × 3seeds = 180
 # Total in config: 5 L × 5r × 3arch × 3seeds = 225
 #
-# Run: uv run bb run -c configs/set_sweep_L.yaml --no-save-model
+# Run: uv run bb run -c configs/paper/set_sweep_L.yaml --no-save-model -o data/results/sweeps.csv
 
 task: set
 loss: cross_entropy

@@ -13,7 +13,7 @@
 # If not, s imposes structural costs beyond what entropy predicts.
 #
 # Total runs: 4 s × 4 r × 3 architectures × 3 seeds = 144
-# Run: uv run bb run -c configs/copy_sweep_s.yaml --no-save-model
+# Run: uv run bb run -c configs/paper/copy_sweep_s.yaml --no-save-model -o data/results/sweeps.csv
 
 task: copy
 loss: cross_entropy

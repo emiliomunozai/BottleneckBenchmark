@@ -13,10 +13,10 @@
 #
 # Total: 3 encoders x 9 d_b x 3 seeds = 81 runs (~1.2h)
 #
-# After running, use scripts/forgetting_map.py to load each checkpoint and
+# After running, use scripts/paper/forgetting_map.py to load each checkpoint and
 # compute per-position accuracy vectors.
 #
-# Run: uv run bb run -c configs/forgetting_map.yaml -o data/results/expresults3.csv
+# Run: uv run bb run -c configs/paper/forgetting_map.yaml -o data/results/forgetting_runs.csv
 
 task: copy
 loss: cross_entropy

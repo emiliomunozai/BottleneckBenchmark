@@ -15,7 +15,7 @@
 # If EG ≈ const across V → proportional bottleneck preserves performance.
 #
 # Total runs: 5 V × 4 r × 3 architectures × 3 seeds = 180
-# Run: uv run bb run -c configs/copy_sweep_V.yaml --no-save-model
+# Run: uv run bb run -c configs/paper/copy_sweep_V.yaml --no-save-model -o data/results/sweeps.csv
 
 task: copy
 loss: cross_entropy

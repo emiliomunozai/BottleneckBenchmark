@@ -1,0 +1,28 @@
+# Appendix: seed variability, BiSSM structural-regularity row of Table 2.
+# Same cells as the bi_ssm branch of copy_sweep_s.yaml (s > 0), with 7 additional seeds.
+# Total runs: 3 s x 4 r x 7 seeds = 84
+# Run: uv run bb run -c configs/paper/extra_seeds_bissm_s.yaml --no-save-model -o data/results/extra_seeds.csv
+
+task: copy
+loss: cross_entropy
+sequence_length: 16
+vocabulary_size: 8
+input_noise: 0.0
+structural_regularity: [0.25, 0.5, 0.75]
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [1, 2, 3, 4, 5, 6, 7]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+models:
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+d_model: 128
+capacity_ratio: [5, 10, 20, 40]

@@ -214,6 +214,7 @@ data/*
 !data/traces/.gitkeep
 !data/checkpoints/.gitkeep
 scripts/*
+!scripts/paper/
 
 agent.md
 

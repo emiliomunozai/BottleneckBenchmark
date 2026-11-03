@@ -14,7 +14,7 @@
 # New runs: 4 L × 4r × 3arch × 3seeds = 144
 # Total in config: 5 L × 4r × 3arch × 3seeds = 180
 #
-# Run: uv run bb run -c configs/sort_sweep_L.yaml --no-save-model
+# Run: uv run bb run -c configs/paper/sort_sweep_L.yaml --no-save-model -o data/results/sweeps.csv
 
 task: sorting
 loss: cross_entropy

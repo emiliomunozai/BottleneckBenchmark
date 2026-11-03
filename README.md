@@ -169,6 +169,36 @@ Contract:
 - Encoders return `EncoderOutput(z=...)` with shape `[B, bottleneck_dim]`
 - Decoders map that latent to logits `[B, L, V]`
 
+## Reproducing the paper
+
+Everything behind the paper's tables lives under `paper/` folders: configs in `configs/paper/`, scripts in `scripts/paper/`, and the logged runs in `results/paper/`. `d_b^min` is the smallest tested `bottleneck_dim` whose mean noisy-validation accuracy over seeds reaches 0.8.
+
+**Check the tables from the logged runs (seconds, no GPU):**
+
+```powershell
+uv run python scripts/paper/tables.py verify     # compares every cell with the paper, appendix included
+uv run python scripts/paper/tables.py table2     # prints one table
+uv run python scripts/paper/tables.py seeds      # per-cell seed statistics and d_b^min at thresholds 0.75/0.85
+```
+
+**Rerun from scratch.** Each command writes to the file name `tables.py` expects, so the same check runs on your results:
+
+| Paper | Train | GPU time |
+|---|---|---|
+| Tables 1–2 | `uv run bb run -c configs/paper/copy_sweep_L.yaml configs/paper/copy_sweep_V.yaml configs/paper/copy_sweep_s.yaml configs/paper/copy_sweep_eta.yaml configs/paper/set_sweep_L.yaml configs/paper/sort_sweep_L.yaml --no-save-model -o data/results/sweeps.csv` | ~22 h |
+| Table 3 | `uv run bb run -c configs/paper/decoder_sweep_L.yaml --no-save-model -o data/results/decoders.csv` | ~13 h |
+| Table 4 | `uv run bb run -c configs/paper/forgetting_map.yaml -o data/results/forgetting_runs.csv`, then `uv run python scripts/paper/forgetting_map.py -i data/results/forgetting_runs.csv -o data/results/forgetting.csv` | ~3 h |
+| Table 5 | `uv run python scripts/paper/run_multitask.py -c configs/paper/multitask_copy_sort.yaml -o data/results/multitask.csv` (uses `sweeps.csv` for the single-task columns) | ~3 h |
+| Table 6 | `uv run bb run -c configs/paper/factor_interaction.yaml --no-save-model -o data/results/interaction.csv` | ~40 h |
+
+```powershell
+uv run python scripts/paper/tables.py verify --results data/results
+```
+
+Times are logged single-GPU training time with one worker; `--workers N` divides them roughly by N. GPU nondeterminism can move individual runs slightly, so a cell near the threshold may shift by one grid step. Table 4 re-estimates per-position accuracy on freshly sampled sequences, so its third decimal varies between runs.
+
+**Appendix experiments** (`configs/paper/`): `warmup_*.yaml` (training-recipe sensitivity), `extra_seeds_*.yaml` (seed variability of the BiSSM structural-regularity row), `palindrome_copy.yaml` (a non-Markov source). Each file states its run command in its header and writes to the file `verify` reads (`warmup.csv`, `extra_seeds.csv`, `palindrome.csv`).
+
 ## Project description
 
 ### Motivation

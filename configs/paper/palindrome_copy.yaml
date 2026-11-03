@@ -1,0 +1,53 @@
+# Appendix: a non-Markov source. Copy on palindromic sequences (L=16, V=8), BiLSTM and
+# Transformer, paper seeds. d_b is set directly because the entropy proxy used to build the
+# capacity_ratio grid is defined for the Markov source. Each (encoder, d_b) pair is listed
+# under `models` because bottleneck_dim is not a swept key.
+# Total runs: 3 d_b x 2 encoders x 3 seeds = 18
+# Run: uv run bb run -c configs/paper/palindrome_copy.yaml --no-save-model -o data/results/palindrome.csv
+
+task: copy
+loss: cross_entropy
+source: palindrome
+sequence_length: 16
+vocabulary_size: 8
+input_noise: 0.0
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [42, 123, 456]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+models:
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+    bottleneck_dim: 5
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+    bottleneck_dim: 10
+  - encoder: bi_lstm
+    decoder: lstm
+    n_layers: 2
+    bottleneck_dim: 20
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+    bottleneck_dim: 5
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+    bottleneck_dim: 10
+  - encoder: transformer
+    decoder: lstm
+    n_layers: 2
+    n_heads: 4
+    bottleneck_dim: 20
+
+d_model: 128

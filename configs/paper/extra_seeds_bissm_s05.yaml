@@ -1,0 +1,29 @@
+# Appendix: seed variability, BiSSM at s=0.5 (the cell at the grid ceiling d_b=40).
+# 15 further seeds at the two largest grid points; with extra_seeds_bissm_s.yaml and the
+# paper seeds this gives 25 seeds at d_b=40.
+# Total runs: 2 r x 15 seeds = 30
+# Run: uv run bb run -c configs/paper/extra_seeds_bissm_s05.yaml --no-save-model -o data/results/extra_seeds.csv
+
+task: copy
+loss: cross_entropy
+sequence_length: 16
+vocabulary_size: 8
+input_noise: 0.0
+structural_regularity: 0.5
+corruption_mode: replace
+batch_size: 128
+steps: 20000
+eval_every: 500
+seed: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+early_stopping: true
+patience: 10
+no_hope_after_evals: 100
+no_hope_threshold: 0.01
+
+models:
+  - encoder: bi_ssm
+    decoder: lstm
+    n_layers: 2
+
+d_model: 128
+capacity_ratio: [20, 40]
