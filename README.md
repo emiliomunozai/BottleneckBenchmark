@@ -40,6 +40,18 @@ uv run bb predict data/checkpoints/copy_bi_lstm_lstm_0.pt -n 5
 
 `bb run` takes one or more YAML configs. List-valued fields are swept (Cartesian product). There is no separate sweep command.
 
+Options:
+
+```
+-c, --config YAML [YAML ...]   Config file(s)
+-o, --output PATH              Results CSV (default: data/results/results.csv)
+--overwrite                    Replace existing results
+--no-save-model                Skip checkpoint writing
+--device {auto,cpu,cuda}
+--extend-grid                  Keep doubling capacity_ratio while no tested d_b succeeds
+--workers N                    Parallel training processes on the same GPU (default: 1)
+```
+
 Use `uv run bb --help`, `uv run bb run --help`, and `uv run bb predict --help` for full flag lists.
 
 ### Quick test run (no output files)
@@ -49,30 +61,11 @@ To run a quick test that will not save any results or checkpoints, use the `--no
 ```powershell
 uv run bb run -c configs/example_single.yaml --no-save-model -o nul
 ```
-- On Linux or Mac, replace `-o nul` with `-o /dev/null`:
+- On Linux or Mac, write to a throwaway temporary directory instead:
   ```sh
-  uv run bb run -c configs/example_single.yaml --no-save-model -o /dev/null
+  uv run bb run -c configs/example_single.yaml --no-save-model -o "$(mktemp -d)/results.csv"
   ```
 This will train and print results to the screen, but skip writing results or models.
-
-### Repository documentation
-
-| Path | Purpose |
-|------|---------|
-| `docs/pending.md` | Task board (writing, code, experiments, submission) |
-| `docs/logs.md` | Macro decisions and conclusions across runs |
-| `docs/experiments.md` | Per-run tables and experiment-series notes |
-| `docs/main.tex` | Paper draft (NeurIPS 2026 style) |
-
-Options:
-
-```
--c, --config YAML [YAML ...]   Config file(s)
--o, --output PATH              Results CSV (default: data/results/results.csv)
---overwrite                    Replace existing results
---no-save-model                Skip checkpoint writing
---device {auto,cpu,cuda}
-```
 
 ## Config patterns
 
@@ -141,6 +134,14 @@ List-valued fields (`sequence_length`, `vocabulary_size`, `input_noise` above) a
 ### Defaults
 
 Any key omitted from a config falls back to the built-in defaults. `bottleneck_dim` defaults to `d_model` when not specified.
+
+### Capacity ratio
+
+Instead of a fixed `bottleneck_dim`, a config can set `capacity_ratio` (a list sweeps it). The bottleneck is then `min(d_model, ceil(capacity_ratio * d_min))`, where `d_min = ceil(L * (1 - s) * log2(V) / 32)` is the number of float32 dimensions needed to hold the sequence entropy. The paper configs use `capacity_ratio: [5, 10, 20, 40]`.
+
+### Sequence source
+
+`source` selects the input generator: `random` (default, the Markov source below) or `palindrome` (the second half mirrors the first).
 
 ## Output
 
@@ -218,11 +219,11 @@ The full model is their composition \( g_\phi(f_\theta(x)) \), trained end-to-en
 
 Each task defines a deterministic mapping from the clean input \( x \) to a target sequence \( y \):
 
-| Task | Target | What it measures |
+| Task (`task`) | Target | What it measures |
 |------|--------|------------------|
-| **Copy** | \( y = x \) | Whether the bottleneck can preserve token identity and order |
-| **Sorting** | \( y = \text{sort}(x) \) | Whether the bottleneck captures distributional content independent of position |
-| **Set** | \( y = \text{sort}(\text{unique}(x)) \), right-padded with a sentinel | Whether the bottleneck captures the support of \( x \) (which tokens appear) without their counts or order |
+| **Copy** (`copy`) | \( y = x \) | Whether the bottleneck can preserve token identity and order |
+| **Sorting** (`sorting`) | \( y = \text{sort}(x) \) | Whether the bottleneck captures distributional content independent of position |
+| **Set** (`set`) | \( y = \text{sort}(\text{unique}(x)) \), right-padded with a sentinel | Whether the bottleneck captures the support of \( x \) (which tokens appear) without their counts or order |
 
 Targets are always computed from the clean (uncorrupted) input.
 
@@ -247,8 +248,8 @@ Corruption is applied to the encoder input only; the target \( y \) is always de
 
 ### Loss functions
 
-- **Cross-entropy**: standard token-level cross-entropy over the vocabulary, averaged across positions and batch.
-- **Shift-tolerant cross-entropy**: at each position \( t \), the one-hot target is replaced by a soft distribution blending targets from neighboring positions \( [t{-}w, t{+}w] \), weighted by a Gaussian kernel with standard deviation \( \sigma = w/2 \). This relaxes the positional alignment requirement: a copy shifted by one position incurs a small penalty rather than full cross-entropy loss, while a perfectly aligned prediction still achieves the global optimum.
+- **Cross-entropy** (`cross_entropy`): standard token-level cross-entropy over the vocabulary, averaged across positions and batch.
+- **Shift-tolerant cross-entropy** (`shift_tolerant_ce`): at each position \( t \), the one-hot target is replaced by a soft distribution blending targets from neighboring positions \( [t{-}w, t{+}w] \), weighted by a Gaussian kernel with standard deviation \( \sigma = w/2 \). This relaxes the positional alignment requirement: a copy shifted by one position incurs a small penalty rather than full cross-entropy loss, while a perfectly aligned prediction still achieves the global optimum.
 
 ### Experimental protocol
 
